@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+using namespace std;
 namespace itis {
 
   int HashTable::hash(int key) const {
@@ -17,27 +18,59 @@ namespace itis {
       throw std::logic_error("hash table load factor must be in range [0...1]");
     }
 
-    // Tip: allocate hash-table buckets
+    buckets_.resize(capacity);
   }
 
   std::optional<std::string> HashTable::Search(int key) const {
-    // Tip: compute hash code (index) and use linear search
+    int hashIndex = hash(key);
+    Bucket b = *(buckets_.begin() + hashIndex);
+
+    for (auto elem : b) {
+      if(elem.first == key) { return make_optional(elem.second);}
+    }
+
     return std::nullopt;
   }
 
   void HashTable::Put(int key, const std::string &value) {
     // Tip 1: compute hash code (index) to determine which bucket to use
     // Tip 2: consider the case when the key exists (read the docs in the header file)
+    int hashIndex = hash(key);
+    Bucket b = buckets_[hashIndex];
+    for (auto elem : b) {
+      if(elem.first == key) {
+        elem.second = value;
+        return;
+      }
+    }
+    num_keys_++;
+    b.push_front(pair<int, string>(key, value));
 
     if (static_cast<double>(num_keys_) / buckets_.size() >= load_factor_) {
-      // Tip 3: recompute hash codes (indices) for key-value pairs (create a new hash-table)
-      // Tip 4: use utils::hash(key, size) to compute new indices for key-value pairs
+      auto oldBuckets = buckets_;
+      buckets_ = vector<Bucket>(buckets_.capacity()*kGrowthCoefficient);
+      for (const auto&bucket : oldBuckets){
+        if(!bucket.empty()){
+          for (const auto& pair : bucket) {
+            hashIndex = hash(pair.first);
+            buckets_[hashIndex].emplace_back(pair.first, pair.second);
+          }
+        }
+      }
     }
   }
 
   std::optional<std::string> HashTable::Remove(int key) {
     // Tip 1: compute hash code (index) to determine which bucket to use
     // TIp 2: find the key-value pair to remove and make a copy of value to return
+    int hashIndex = hash(key);
+    for (auto p : buckets_[hashIndex]){
+      if(p.first == key){
+        optional<string> res = make_optional(p.second);
+        buckets_[hashIndex].remove(pair<int, string>(key, p.second));
+        return res;
+      }
+    }
     return std::nullopt;
   }
 
