@@ -23,42 +23,41 @@ namespace itis {
 
   std::optional<std::string> HashTable::Search(int key) const {
     int hashIndex = hash(key);
-    Bucket b = *(buckets_.begin() + hashIndex);
 
-    for (auto elem : b) {
-      if(elem.first == key) { return make_optional(elem.second);}
+    for (auto elem : buckets_[hashIndex]) {
+      if(elem.first == key) { return elem.second;}
     }
 
     return std::nullopt;
   }
 
   void HashTable::Put(int key, const std::string &value) {
-    // Tip 1: compute hash code (index) to determine which bucket to use
-    // Tip 2: consider the case when the key exists (read the docs in the header file)
-    int hashIndex = hash(key);
-    Bucket b = buckets_[hashIndex];
-    for (auto elem : b) {
+
+    auto hashIndex = hash(key);
+    for (auto &elem : buckets_[hashIndex]) {
       if(elem.first == key) {
         elem.second = value;
         return;
       }
     }
+    buckets_[hashIndex].push_back(pair(key, value));
     num_keys_++;
-    b.push_front(pair<int, string>(key, value));
 
     if (static_cast<double>(num_keys_) / buckets_.size() >= load_factor_) {
-      auto oldBuckets = buckets_;
-      buckets_ = vector<Bucket>(buckets_.capacity()*kGrowthCoefficient);
-      for (const auto&bucket : oldBuckets){
+      vector<Bucket> newBuckets = vector<Bucket>{};
+      newBuckets.resize(buckets_.size()*kGrowthCoefficient);
+      for (const auto&bucket : buckets_){
         if(!bucket.empty()){
-          for (const auto& pair : bucket) {
-            hashIndex = hash(pair.first);
-            buckets_[hashIndex].emplace_back(pair.first, pair.second);
+          for (auto p : bucket) {
+            hashIndex = utils::hash(p.first, newBuckets.size());
+            newBuckets[hashIndex].push_back(pair(p.first, p.second));
           }
         }
       }
+      buckets_ = newBuckets;
     }
   }
+
 
   std::optional<std::string> HashTable::Remove(int key) {
     // Tip 1: compute hash code (index) to determine which bucket to use
